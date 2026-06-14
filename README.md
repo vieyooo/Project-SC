@@ -31,7 +31,7 @@ Arsitektur CNN-1D dirancang secara ramping (~59 ribu parameter) dan dilengkapi d
 - **Held-Out Test Set Accuracy:** `100.00%` *(Uji coba pada 46 sampel steril yang tidak pernah dilihat model saat training)*
 
 **Batasan Masalah & Keterbatasan Proyek (Limitation of Study):**
-Akurasi tinggi pada pengujian awal ini dipengaruhi oleh karakteristik dataset sekunder yang disegmentasi menjadi jendela waktu 3 detik dari sumber rekaman video yang sama (*Source Data Leakage*). Sistem ini berfungsi optimal sebagai *Proof of Concept* validasi arsitektur. Untuk implementasi industri skala massal, model disarankan untuk dilatih ulang menggunakan variasi data primer dari ratusan blok mesin motor yang berbeda.
+Akurasi tinggi pada pengujian awal ini dipengaruhi oleh karakteristik dataset sekunder yang disegmentasi menjadi jendela waktu 3 detik dari sumber rekaman beberapa video yang digabungkan menjadi 1 (*Source Data Leakage*). Sistem ini berfungsi optimal sebagai *Proof of Concept* validasi arsitektur. Untuk implementasi industri skala massal, model disarankan untuk dilatih ulang menggunakan variasi data primer dari ratusan blok mesin motor yang berbeda.
 
 ---
 
