@@ -1,0 +1,16 @@
+# ── Core Web App ──
+streamlit>=1.35.0
+
+# ── Deep Learning ──
+tensorflow>=2.13.0
+
+# ── Audio Processing ──
+librosa>=0.10.0
+soundfile>=0.12.1
+
+# ── Data Science ──
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# ── Utilities ──
+pickle5; python_version < "3.8"
