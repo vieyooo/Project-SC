@@ -151,6 +151,7 @@ html, body, [class*="css"] {
 }
 .tag-yellow { background: var(--moss); color: var(--plaster); border: 1px solid var(--mist); }
 .tag-blue   { background: var(--soot); color: var(--plaster); border: 1px solid var(--mist); }
+.tag-green  { background: var(--plaster); color: var(--soot); border: 1px solid var(--moss); }
 
 /* ── Upload Zone ── */
 .upload-wrapper {
@@ -184,6 +185,10 @@ html, body, [class*="css"] {
 .result-banner-gardan {
     background: linear-gradient(135deg, var(--eucalyptus), var(--soot));
     border: 1.5px solid var(--mist);
+}
+.result-banner-sehat {
+    background: linear-gradient(135deg, var(--mist), var(--soot));
+    border: 1.5px solid var(--eucalyptus);
 }
 .result-label {
     font-size: 0.72rem;
@@ -299,6 +304,7 @@ div[data-testid="stFileUploader"] section {
 }
 .bar-orange { background: linear-gradient(90deg, var(--eucalyptus), var(--plaster)); }
 .bar-blue   { background: linear-gradient(90deg, var(--moss), var(--plaster)); }
+.bar-green  { background: linear-gradient(90deg, var(--mist), var(--plaster)); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -314,6 +320,13 @@ TARGET_DURATION  = 3.0
 MODEL_PATH       = "model_motor_matic_cnn1d.h5"
 SCALER_PATH      = "scaler_motor_matic.pkl"
 CONFIG_PATH      = "model_config.pkl"
+
+# Sesuai CLASS_FOLDERS pada notebook training (model 3-kelas, output softmax)
+CLASS_FOLDERS = {
+    0: "Tensioner Aus",
+    1: "Gardan — Gigi Rasio Terkikis",
+    2: "Mesin Sehat",
+}
 
 
 # ─────────────────────────────────────────────────────────
@@ -369,15 +382,16 @@ def predict_audio(wav_path, model, scaler, max_len):
 
     feat_norm = scaler.transform(feat.reshape(-1, F)).reshape(1, max_len, F)
 
-    prob  = float(model.predict(feat_norm, verbose=0)[0][0])
-    label = 1 if prob >= 0.5 else 0
-    confidence = max(prob, 1 - prob) * 100
+    # Model output softmax untuk 3 kelas (Tensioner_Aus, Gardan, Sehat)
+    probs = model.predict(feat_norm, verbose=0)[0]
+    label = int(np.argmax(probs))
+    confidence = float(np.max(probs)) * 100
 
     return {
         "label":      label,
-        "kelas":      "Tensioner Aus" if label == 0 else "Gardan — Gigi Rasio Terkikis",
-        "prob_raw":   prob,
+        "kelas":      CLASS_FOLDERS[label],
         "confidence": confidence,
+        "probabilitas": {CLASS_FOLDERS[i]: float(p) for i, p in enumerate(probs)},
     }
 
 
@@ -412,8 +426,9 @@ st.markdown("""
     <h1 class="hero-title">Moto<span>Scan</span></h1>
     <p class="hero-desc">
         Unggah rekaman suara mesin motor matic Anda, dan sistem kami akan menganalisis
-        apakah terdapat tanda-tanda kerusakan pada <strong>Tensioner</strong> atau
-        <strong>Gardan</strong> — dalam hitungan detik, tanpa perlu ke bengkel terlebih dahulu.
+        apakah mesin dalam kondisi <strong>Sehat</strong>, atau terdapat tanda-tanda
+        kerusakan pada <strong>Tensioner</strong> maupun <strong>Gardan</strong> —
+        dalam hitungan detik, tanpa perlu ke bengkel terlebih dahulu.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -450,7 +465,7 @@ st.markdown('<hr class="soft-divider">', unsafe_allow_html=True)
 st.markdown('<p class="section-label">Kenali Komponen Motor Matic Anda</p>', unsafe_allow_html=True)
 st.markdown('<p class="section-title">Apa yang Dideteksi oleh MotoScan?</p>', unsafe_allow_html=True)
 
-edu_col1, edu_col2 = st.columns(2, gap="medium")
+edu_col1, edu_col2, edu_col3 = st.columns(3, gap="medium")
 
 with edu_col1:
     st.markdown("""
@@ -484,6 +499,24 @@ with edu_col2:
             <br><br>
             Kondisi ini biasanya disebabkan oleh kurangnya oli gardan atau pemakaian
             jangka panjang tanpa pengecekan rutin.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with edu_col3:
+    st.markdown("""
+    <div class="edu-card">
+        <div class="edu-card-icon">✅</div>
+        <span class="edu-tag tag-green">Label 2 — Sehat</span>
+        <div class="edu-card-title">Mesin Sehat (Tanpa Indikasi Kerusakan)</div>
+        <div class="edu-card-body">
+            Jika suara mesin tergolong <strong>normal</strong>, artinya tidak ditemukan
+            pola suara yang menyerupai keausan tensioner maupun gardan. Mesin bekerja
+            sebagaimana mestinya tanpa bunyi "kletek-kletek" atau "nguing" yang
+            mencurigakan.
+            <br><br>
+            Tetap pertahankan kondisi ini dengan servis berkala dan penggantian oli
+            sesuai jadwal.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -599,14 +632,21 @@ if uploaded_file is not None:
                     banner_class = "result-banner-tensioner"
                     bar_class = "bar-orange"
                     icon = "⚙️"
-                else:
+                    result_label_text = "Komponen Terdeteksi"
+                elif label == 1:
                     banner_class = "result-banner-gardan"
                     bar_class = "bar-blue"
                     icon = "🔧"
+                    result_label_text = "Komponen Terdeteksi"
+                else:
+                    banner_class = "result-banner-sehat"
+                    bar_class = "bar-green"
+                    icon = "✅"
+                    result_label_text = "Status Mesin"
 
                 st.markdown(f"""
                 <div class="result-banner {banner_class}">
-                    <div class="result-label">Komponen Terdeteksi</div>
+                    <div class="result-label">{result_label_text}</div>
                     <p class="result-class">{icon} {kelas}</p>
                     <span class="confidence-pill">Keyakinan {conf_pct}</span>
                     <div class="conf-bar-wrapper" style="margin-top:0.8rem;">
@@ -673,7 +713,7 @@ if uploaded_file is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
-                else:
+                elif label == 1:
                     st.markdown("""
                     <div class="insight-block">
                         <div class="insight-header">
@@ -716,6 +756,53 @@ if uploaded_file is not None:
                                 <li>Ganti oli gardan setiap 10.000 km atau 1 tahun sekali</li>
                                 <li>Waspadai kebocoran oli di sekitar roda belakang</li>
                                 <li>Hindari beban berlebih dan berkendara agresif</li>
+                            </ul>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                else:
+                    st.markdown("""
+                    <div class="insight-block">
+                        <div class="insight-header">
+                            <span class="insight-icon">🎉</span>
+                            <span class="insight-title">Kabar Baik — Tidak Ada Indikasi Kerusakan</span>
+                        </div>
+                        <div class="insight-body">
+                            Pola suara mesin Anda tidak menyerupai ciri keausan tensioner
+                            maupun gardan. Beberapa tanda mesin sehat yang umum:
+                            <ul>
+                                <li>Suara mesin halus dan stabil saat idle</li>
+                                <li>Tidak ada bunyi "kletek-kletek" dari area rantai timing</li>
+                                <li>Tidak ada bunyi "nguing" atau getaran saat berakselerasi</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="insight-block">
+                        <div class="insight-header">
+                            <span class="insight-icon">🛠️</span>
+                            <span class="insight-title">Tindakan yang Disarankan</span>
+                        </div>
+                        <div class="insight-body">
+                            Tidak diperlukan perbaikan khusus saat ini. Tetap lakukan:
+                            <ul>
+                                <li>Servis berkala sesuai buku panduan motor</li>
+                                <li>Cek ulang berkala (disarankan setiap 1-2 bulan)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="insight-block">
+                        <div class="insight-header">
+                            <span class="insight-icon">🛡️</span>
+                            <span class="insight-title">Tips Menjaga Kondisi Mesin</span>
+                        </div>
+                        <div class="insight-body">
+                            <ul>
+                                <li>Ganti oli mesin rutin setiap 2.000-3.000 km</li>
+                                <li>Ganti oli gardan setiap 10.000 km atau 1 tahun sekali</li>
+                                <li>Panaskan mesin 1-2 menit sebelum digunakan</li>
                             </ul>
                         </div>
                     </div>
